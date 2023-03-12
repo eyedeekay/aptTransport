@@ -29,19 +29,19 @@ package main
 import "github.com/eyedeekay/apttransport"
 
 func main() {
-	transport := &apttransport.AptMethod{}
-	transport.Main = transport.DefaultMain
+    transport := &apttransport.AptMethod{}
+    transport.Main = transport.DefaultMain
     proxy, err := SOCKS5("tcp", "127.0.0.1:9050", nil, nil)
     if err != nil {
         panic(err)
     }
     transport.Client := &http.Client{
-		Timeout: time.Duration(6) * time.Minute,
-		Transport: &http.Transport{
-			Dial:                  proxy.Dial,
-		},
-		CheckRedirect: nil,
-	}
+        Timeout: time.Duration(6) * time.Minute,
+        Transport: &http.Transport{
+            Dial: proxy.Dial,
+        },
+        CheckRedirect: nil,
+    }
     transport.Main()
 }
 ```

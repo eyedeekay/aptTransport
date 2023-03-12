@@ -92,19 +92,19 @@ func main() {
 import &quot;github.com/eyedeekay/apttransport&quot;
 
 func main() {
-	transport := &amp;apttransport.AptMethod{}
-	transport.Main = transport.DefaultMain
+    transport := &amp;apttransport.AptMethod{}
+    transport.Main = transport.DefaultMain
     proxy, err := SOCKS5(&quot;tcp&quot;, &quot;127.0.0.1:9050&quot;, nil, nil)
     if err != nil {
         panic(err)
     }
     transport.Client := &amp;http.Client{
-		Timeout: time.Duration(6) * time.Minute,
-		Transport: &amp;http.Transport{
-			Dial:                  proxy.Dial,
-		},
-		CheckRedirect: nil,
-	}
+        Timeout: time.Duration(6) * time.Minute,
+        Transport: &amp;http.Transport{
+            Dial: proxy.Dial,
+        },
+        CheckRedirect: nil,
+    }
     transport.Main()
 }
 </code></pre>
