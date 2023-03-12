@@ -28,7 +28,11 @@ type AptMethod struct {
 
 func (a *AptMethod) GetAptString() string {
 	if a.AptString == "" {
-		return "http://"
+		exe, err := os.Executable()
+		if err != nil {
+			return "http://"
+		}
+		return exe + "://"
 	}
 	return a.AptString
 }

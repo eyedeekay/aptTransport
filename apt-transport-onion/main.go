@@ -13,7 +13,6 @@ import (
 func main() {
 	transport := &apttransport.AptMethod{}
 	transport.Main = transport.DefaultMain
-	transport.AptString = "i2psam://"
 	onion, err := onramp.NewOnion("apt-transport-onion")
 	if err == nil {
 		samHTTPClient := GenerateSAMHTTPClient(onion)

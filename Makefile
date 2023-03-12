@@ -16,3 +16,8 @@ onion:
 
 garlic:
 	go build "${GOTAGS}" -o apt-transport-garlic/apt-transport-garlic apt-transport-garlic/main.go
+
+install:
+	install -m755 apt-transport-default/apt-transport-default /usr/lib/apt/methods/https
+	install -m755 apt-transport-onion/apt-transport-onion /usr/lib/apt/methods/onion
+	install -m755 apt-transport-garlic/apt-transport-garlic /usr/lib/apt/methods/garlic

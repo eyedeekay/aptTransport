@@ -13,7 +13,6 @@ import (
 func main() {
 	transport := &apttransport.AptMethod{}
 	transport.Main = transport.DefaultMain
-	transport.AptString = "i2psam://"
 	garlic, err := onramp.NewGarlic("apt-transport-garlic", "127.0.0.1:7656", nil)
 	if err == nil {
 		samHTTPClient := GenerateSAMHTTPClient(garlic)
