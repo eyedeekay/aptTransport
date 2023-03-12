@@ -16,12 +16,12 @@ import (
 	"strings"
 )
 
-type client interface {
+type AptClient interface {
 	Get(url string) (*http.Response, error)
 }
 
 type AptMethod struct {
-	Client    client
+	Client    AptClient
 	AptString string
 	Main      func()
 }
@@ -33,7 +33,7 @@ func (a *AptMethod) GetAptString() string {
 	return a.AptString
 }
 
-func (a *AptMethod) GetClient() client {
+func (a *AptMethod) GetClient() AptClient {
 	if a.Client == nil {
 		return http.DefaultClient
 	}
