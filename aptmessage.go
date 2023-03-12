@@ -2,24 +2,23 @@ package apttransport
 
 import "strings"
 
-type Message struct {
+// AptMessage is a message from the apt transport.
+type AptMessage struct {
 	Status     string
 	StatusCode int
 	Header     Header
 	Exit       int
 }
 
-type AptMessage struct {
-	Code    int
-	Headers map[string]string
-}
-
+// Header is a simple map of headers for an Apt message
 type Header map[string][]string
 
+// Add a header to the message.
 func (h Header) Add(key, value string) {
 	h[key] = append(h[key], value)
 }
 
+// Get a header from the message.
 func (h Header) Get(key string) string {
 	if value, ok := h[key]; ok {
 		if len(value) > 0 {
@@ -29,7 +28,8 @@ func (h Header) Get(key string) string {
 	return ""
 }
 
-func (m *Message) String() string {
+// String returns the apt message as a string
+func (m *AptMessage) String() string {
 	s := []string{m.Status}
 	for k, values := range m.Header {
 		for _, v := range values {

@@ -16,16 +16,22 @@ import (
 	"strings"
 )
 
+// AptClient is an apt transport client which performs a download
 type AptClient interface {
 	Get(url string) (*http.Response, error)
 }
 
+// AptMethod is a usable apt transport. It must be instantiated with
+// a Main function. DefaultMain will work for almost all cases.
 type AptMethod struct {
 	Client    AptClient
 	AptString string
 	Main      func()
 }
 
+// GetAptString returns the protocol string used for the apt transport.
+// defaults to the name of the executable+"://", or AptString if it is set. If
+// an error occurs, it will return "http://"
 func (a *AptMethod) GetAptString() string {
 	if a.AptString == "" {
 		exe, err := os.Executable()
@@ -37,6 +43,8 @@ func (a *AptMethod) GetAptString() string {
 	return a.AptString
 }
 
+// GetClient returns the AptClient used for the apt transport.
+// if no client is present, http.DefaultClient is used instead.
 func (a *AptMethod) GetClient() AptClient {
 	if a.Client == nil {
 		return http.DefaultClient
@@ -44,44 +52,7 @@ func (a *AptMethod) GetClient() AptClient {
 	return a.Client
 }
 
-func (a *AptMethod) Run() {
-	c := make(chan *Message)
-	go a.output(c)
-	a.sendCapabilities(c)
-
-	stdin := bufio.NewScanner(os.Stdin)
-	for stdin.Scan() {
-		line := stdin.Text()
-		if line == "" {
-			continue
-		}
-		fmt.Println(line)
-		s := strings.SplitN(line, " ", 2)
-		code, err := strconv.Atoi(s[0])
-		if err != nil {
-			fmt.Println("Malformed message!")
-			os.Exit(100)
-		}
-		request := &Message{
-			Status:     line,
-			StatusCode: code,
-			Header:     Header{},
-		}
-
-		for stdin.Scan() {
-			line := stdin.Text()
-
-			if line == "" {
-				a.process(c, request)
-				break
-			}
-			s := strings.SplitN(line, ": ", 2)
-			request.Header.Add(s[0], s[1])
-		}
-	}
-}
-
-func (a *AptMethod) output(c <-chan *Message) {
+func (a *AptMethod) output(c <-chan *AptMessage) {
 	for {
 		m := <-c
 		os.Stdout.Write([]byte(m.String()))
@@ -91,8 +62,8 @@ func (a *AptMethod) output(c <-chan *Message) {
 	}
 }
 
-func (a *AptMethod) sendCapabilities(c chan<- *Message) {
-	caps := &Message{
+func (a *AptMethod) sendCapabilities(c chan<- *AptMessage) {
+	caps := &AptMessage{
 		Status: "100 Capabilities",
 		Header: Header{},
 	}
@@ -104,14 +75,14 @@ func (a *AptMethod) sendCapabilities(c chan<- *Message) {
 	c <- caps
 }
 
-func (a *AptMethod) process(c chan<- *Message, m *Message) {
+func (a *AptMethod) process(c chan<- *AptMessage, m *AptMessage) {
 	switch m.StatusCode {
 	case 600:
 		go a.fetch(c, m)
 	case 601:
 		// TODO: parse config?
 	default:
-		fail := &Message{
+		fail := &AptMessage{
 			Status: "401 General Failure",
 			Header: Header{},
 			Exit:   100,
@@ -122,7 +93,7 @@ func (a *AptMethod) process(c chan<- *Message, m *Message) {
 	}
 }
 
-func (a *AptMethod) fetch(c chan<- *Message, m *Message) {
+func (a *AptMethod) fetch(c chan<- *AptMessage, m *AptMessage) {
 	uri := m.Header.Get("URI")
 	filename := m.Header.Get("Filename")
 
@@ -130,7 +101,7 @@ func (a *AptMethod) fetch(c chan<- *Message, m *Message) {
 
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		c <- &Message{
+		c <- &AptMessage{
 			Status: "400 URI Failure",
 			Header: Header{
 				"Message": []string{"Could not open file: " + err.Error()},
@@ -148,7 +119,7 @@ func (a *AptMethod) fetch(c chan<- *Message, m *Message) {
 	log.Println("Get: ", realURI)
 	resp, err := a.GetClient().Get(realURI)
 	if err != nil {
-		c <- &Message{
+		c <- &AptMessage{
 			Status: "400 URI Failure",
 			Header: Header{
 				"Message": []string{"Could not fetch URI: " + err.Error()},
@@ -159,7 +130,7 @@ func (a *AptMethod) fetch(c chan<- *Message, m *Message) {
 	}
 	defer resp.Body.Close()
 
-	started := &Message{
+	started := &AptMessage{
 		Status: "200 URI Start",
 		Header: Header{
 			"URI": []string{uri},
@@ -175,7 +146,7 @@ func (a *AptMethod) fetch(c chan<- *Message, m *Message) {
 	sha512Hash := sha512.New()
 
 	if _, err = io.Copy(io.MultiWriter(file, md5Hash, sha1Hash, sha256Hash, sha512Hash), resp.Body); err != nil {
-		c <- &Message{
+		c <- &AptMessage{
 			Status: "400 URI Failure",
 			Header: Header{
 				"Message": []string{"Could not write file: " + err.Error()},
@@ -185,7 +156,7 @@ func (a *AptMethod) fetch(c chan<- *Message, m *Message) {
 		return
 	}
 
-	success := &Message{
+	success := &AptMessage{
 		Status: "201 URI Done",
 		Header: Header{},
 	}
@@ -202,8 +173,11 @@ func (a *AptMethod) fetch(c chan<- *Message, m *Message) {
 	c <- success
 }
 
+// DefaultMain is a default Main function which will run all the registered functions
+// or their corresponding defaults. If one wishes, the Main can be overwritten with a
+// different function.
 func (a *AptMethod) DefaultMain() {
-	c := make(chan *Message)
+	c := make(chan *AptMessage)
 	go a.output(c)
 	a.sendCapabilities(c)
 
@@ -219,7 +193,7 @@ func (a *AptMethod) DefaultMain() {
 			fmt.Println("Malformed message!")
 			os.Exit(100)
 		}
-		request := &Message{
+		request := &AptMessage{
 			Status:     line,
 			StatusCode: code,
 			Header:     Header{},
