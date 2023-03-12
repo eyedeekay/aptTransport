@@ -1,0 +1,4 @@
+apt-transport-default/apt-transport-default
+apt-transport-garlic/apt-transport-garlic
+apt-transport-onion/apt-transport-onion
+lib.a
